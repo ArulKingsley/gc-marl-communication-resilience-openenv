@@ -197,11 +197,17 @@ AGENT_FNS: dict[str, Callable[[list[list[float]]], list[int]]] = {
 def wait_for_server(host: str, token: str | None, retries: int = 15, delay_seconds: int = 2) -> bool:
     for attempt in range(1, retries + 1):
         try:
-            health = get_json(host, "/health", token=token)
-            print(f"Server ready: {health}")
+            get_json(host, "/health", token=token)
             return True
         except Exception:
-            print(f"Waiting for server... ({attempt}/{retries})")
+            emit_structured(
+                "STEP",
+                {
+                    "phase": "wait_for_server",
+                    "attempt": attempt,
+                    "status": "retry",
+                },
+            )
             time.sleep(delay_seconds)
     return False
 
@@ -325,7 +331,14 @@ def main() -> None:
     try:
         api_base_url, model_name, token = resolve_required_config(args)
     except RuntimeError as exc:
-        print(str(exc))
+        emit_structured(
+            "END",
+            {
+                "phase": "config",
+                "status": "error",
+                "error": str(exc),
+            },
+        )
         raise SystemExit(2) from exc
 
     # Required by submission instructions for any LLM-backed policy calls.
@@ -333,12 +346,29 @@ def main() -> None:
     if _openai_client is None:
         raise RuntimeError("Failed to initialise OpenAI client.")
 
-    if not wait_for_server(host, token=token):
-        print("Server not reachable. Start the API server first.")
-        return
+    emit_structured(
+        "START",
+        {
+            "phase": "run",
+            "host": host,
+            "api_base_url": api_base_url,
+            "model_name": model_name,
+            "tasks": tasks,
+            "agents": agents,
+            "seeds": args.seeds,
+        },
+    )
 
-    print(f"Using configured MODEL_NAME: {model_name}")
-    print(f"Using configured API_BASE_URL: {api_base_url}")
+    if not wait_for_server(host, token=token):
+        emit_structured(
+            "END",
+            {
+                "phase": "wait_for_server",
+                "status": "error",
+                "error": "Server not reachable",
+            },
+        )
+        return
 
     summary_rows: list[dict] = []
 
@@ -347,7 +377,6 @@ def main() -> None:
             task_scores: list[float] = []
 
             for seed in range(args.seeds):
-                print(f"Agent={agent_name:<9} Task={task_id} Seed={seed} ...", end=" ", flush=True)
                 result = run_episode(
                     host,
                     task_id,
@@ -357,13 +386,6 @@ def main() -> None:
                     model_name=model_name,
                 )
                 task_scores.append(result["episode_score"])
-
-                print(
-                    f"score={result['episode_score']:.4f} "
-                    f"reward_score={result['reward_score']:.4f} "
-                    f"fiedler={result['final_fiedler']:.4f} "
-                    f"alive={result['final_alive']}/{N_AGENTS}"
-                )
 
                 run_path = log_dir / f"task{task_id}_seed{seed}_{agent_name}.json"
                 with run_path.open("w", encoding="utf-8") as handle:
@@ -382,20 +404,6 @@ def main() -> None:
                 }
             )
 
-    print()
-    print("=" * 88)
-    print("INFERENCE SUMMARY")
-    print("=" * 88)
-    print(f"{'Agent':<12} {'Task':<24} {'Mean':>10} {'Std':>10} {'Min':>10} {'Max':>10}")
-    print("-" * 88)
-    for row in summary_rows:
-        print(
-            f"{row['agent']:<12} {row['task_name']:<24} "
-            f"{row['mean_score']:>10.4f} {row['std_score']:>10.4f} "
-            f"{row['min_score']:>10.4f} {row['max_score']:>10.4f}"
-        )
-    print("=" * 88)
-
     summary_payload = {
         "host": host,
         "api_base_url": api_base_url,
@@ -409,7 +417,15 @@ def main() -> None:
     with summary_path.open("w", encoding="utf-8") as handle:
         json.dump(summary_payload, handle, indent=2)
 
-    print(f"Logs saved to {log_dir.resolve()}")
+    emit_structured(
+        "END",
+        {
+            "phase": "run",
+            "status": "ok",
+            "summary_path": str(summary_path),
+            "rows": summary_rows,
+        },
+    )
 
 
 if __name__ == "__main__":

@@ -103,7 +103,7 @@ Mandatory environment configuration:
 - `MODEL_NAME`: Model identifier used for LLM inference calls.
 - `HF_TOKEN`: Hugging Face/API key used for authenticated requests.
 
-The `inference.py` script now validates these variables at startup and exits non-zero if any are missing.
+The `inference.py` script now validates these variables at startup and exits with code `2` if any are missing.
 
 PowerShell example:
 ```bash

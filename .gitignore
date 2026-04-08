@@ -29,6 +29,7 @@ pip-wheel-metadata/
 logs/
 logs_latest/
 logs_space/
+logs_phase2_check/
 logs_presub*/
 logs_presub*.txt
 logs_should_fail/
