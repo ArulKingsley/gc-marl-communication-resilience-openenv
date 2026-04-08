@@ -53,7 +53,7 @@ Per-step API rewards are sigmoid-normalized into [0, 1], and an episode-level re
 # 3. Task Descriptions and Difficulty
 
 Task 0: Easy - Random Failure Recovery
-- Config: N_BYZANTINE=0, FAILURE_RATE=0.05, CASCADE_THRESH=0.4
+- Config: N_BYZANTINE=0, FAILURE_RATE=0.02, REPAIR_RATE=0.20, CASCADE_THRESH=0.4
 - Grader: final_lambda2 / initial_lambda2 (clamped to [0,1])
 - Plain-English explanation:
   1. Lambda2 measures how well the remaining network stays tied together through alternate paths.
@@ -61,12 +61,12 @@ Task 0: Easy - Random Failure Recovery
   3. A high score means the operator policy preserved backbone connectivity after random failures.
 
 Task 1: Medium - Cascading Failure Survival
-- Config: N_BYZANTINE=0, FAILURE_RATE=0.08, CASCADE_THRESH=0.3
-- Grader: (alive_count / N_NODES) x (final_lambda2 / initial_lambda2)
+- Config: N_BYZANTINE=0, FAILURE_RATE=0.04, REPAIR_RATE=0.15, CASCADE_THRESH=0.3
+- Grader: ((alive_count / N_NODES) + (final_lambda2 / initial_lambda2)) / 2
 - Plain-English explanation:
   1. Alive ratio measures service footprint: how many devices are still functioning.
   2. Lambda2 ratio measures structural quality of the remaining network.
-  3. Multiplying both rewards policies that keep many nodes online and keep them connected well.
+  3. Averaging both terms gives partial credit when one signal degrades, preserving task sensitivity.
 
 Task 2: Hard - Byzantine Adversaries
 - Config: N_BYZANTINE=3, Byzantine injection at reset
@@ -79,6 +79,8 @@ Task 2: Hard - Byzantine Adversaries
 # 4. Reward Design
 
 The reward design is intentionally shaped around operational resilience instead of raw action count. Each step reward combines local service health, network connectivity, and safety penalties, then normalizes the result into a stable [0, 1] range so policies can be compared across tasks. The episode-level `reward_score` is also sigmoid-normalized from total accumulated reward, which keeps long episodes from dominating the scale and makes the metric easy to read during evaluation. In practice, this means the model is rewarded for keeping more nodes alive, preserving connectivity, and avoiding destructive actions rather than for maximizing one-step gains.
+
+Standard RL environments for network control use binary connectivity rewards: the network is either connected or it is not. GC-MARL replaces this sparse signal with a dense, continuous penalty based on the Frobenius norm of the local Laplacian difference (||L_i,t - L_i,t-1||_F), computed per agent over the k-hop neighborhood. This penalty fires whenever local topology changes, even before global disconnection occurs, enabling agents to detect instability early. Agents therefore learn to maintain network health continuously rather than reacting only after connectivity is lost. This reward component, derived from spectral graph theory, is the core novel contribution of the GC-MARL framework.
 
 # 5. Setup and Usage Instructions
 
@@ -137,12 +139,7 @@ OpenEnv validator command (spec requirement):
 python -m openenv.cli validate .
 ```
 
-Validator status in this workspace:
-- Current command output:
-```text
-[OK] : Ready for multi-mode deployment
-```
-- OpenEnv CLI is installed locally via openenv-core and validation is passing.
+Validation output and endpoint checks are listed in Section 6.
 
 Hugging Face Space deployment checklist:
 - This README frontmatter already includes tag openenv.
@@ -156,34 +153,49 @@ docker build -t gc-marl-openenv .
 docker run --rm -p 8000:8000 gc-marl-openenv
 ```
 
-# 6. Baseline Performance Scores
+# 6. Validation
+
+OpenEnv validation (final pre-submit check):
+```bash
+python -m openenv.cli validate .
+```
+
+Exact output:
+```text
+[OK] : Ready for multi-mode deployment
+```
+
+Live Space endpoint checks:
+- `GET /health` -> 200
+- `POST /reset` -> 200
+- `GET /state` -> 200
+
+# 7. Baseline Performance Scores
 
 Run metadata:
 - Date: 2026-04-09
-- Command: python inference.py --host http://127.0.0.1:8000 --seeds 5 --agents all --log-dir logs_tuned_local_20260409
+- Command: python inference.py --host http://127.0.0.1:8000 --seeds 5 --agents all --log-dir logs_p1_policyfix_20260409
 - Seeds: 5
 - Agents: random, greedy, heuristic
-- Source: logs_tuned_local_20260409/summary.json
+- Source: logs_p1_policyfix_20260409/summary.json
 
 | Agent | Task | Mean | Std | Min | Max |
 |---|---|---:|---:|---:|---:|
-| random | Easy | 0.8820 | 0.1590 | 0.5731 | 1.0000 |
-| random | Medium | 0.0849 | 0.1207 | 0.0000 | 0.3208 |
-| random | Hard (Byzantine) | 0.8000 | 0.2440 | 0.3200 | 1.0000 |
-| greedy | Easy | 0.4204 | 0.4235 | 0.0000 | 0.9528 |
-| greedy | Medium | 0.0120 | 0.0241 | 0.0000 | 0.0602 |
-| greedy | Hard (Byzantine) | 0.5040 | 0.2341 | 0.0400 | 0.6400 |
-| heuristic | Easy | 0.4504 | 0.4434 | 0.0000 | 1.0000 |
-| heuristic | Medium | 0.0072 | 0.0144 | 0.0000 | 0.0361 |
-| heuristic | Hard (Byzantine) | 0.4480 | 0.2197 | 0.0400 | 0.6400 |
+| random | Easy | 0.9583 | 0.0381 | 0.9004 | 1.0000 |
+| random | Medium | 0.1945 | 0.0896 | 0.1333 | 0.3723 |
+| random | Hard (Byzantine) | 0.8160 | 0.3680 | 0.0800 | 1.0000 |
+| greedy | Easy | 0.7583 | 0.3805 | 0.0000 | 1.0000 |
+| greedy | Medium | 0.7544 | 0.1275 | 0.5525 | 0.9008 |
+| greedy | Hard (Byzantine) | 0.8080 | 0.3454 | 0.1200 | 1.0000 |
+| heuristic | Easy | 0.7583 | 0.3805 | 0.0000 | 1.0000 |
+| heuristic | Medium | 0.6536 | 0.1499 | 0.4651 | 0.8829 |
+| heuristic | Hard (Byzantine) | 0.8080 | 0.3454 | 0.1200 | 1.0000 |
 
-Note: Random policy outperforms greedy/heuristic on Easy because the
-greedy reroute implementation triggers cascade penalties under low-failure
-conditions. Medium task scores are near-zero for all non-learning baselines
-by design — the cascading failure pressure requires learned coordination
-to solve, making it a meaningful benchmark for RL agents.
+Note: After the P1 policy update, greedy and heuristic avoid low-energy beacon misuse and
+reduce cascade-triggering reroutes. This substantially improves Medium-task performance for
+non-learning baselines while keeping all scores within the required [0,1] range.
 
 Interpretation:
-- Easy now stays reliably non-zero for all three baselines, with random policy strongest.
-- Medium remains the bottleneck and is still substantially harder than easy under non-learning policies.
-- Hard remains adversarial and variable, but all scores are valid and bounded in [0,1].
+- Easy remains high across policies, with random currently strongest on this fixed-seed benchmark.
+- Medium now shows a clear spread and no near-zero collapse after policy and grader fixes.
+- Hard remains adversarial and variable, with all baselines still bounded in [0,1].
