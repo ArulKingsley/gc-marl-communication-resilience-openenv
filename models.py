@@ -129,10 +129,10 @@ def grade_medium(
     fiedler_final: float,
     fiedler_initial: float,
 ) -> float:
-    """Task 1: (alive_ratio) × (fiedler_ratio), both clamped to [0,1]."""
+    """Task 1: average of alive_ratio and fiedler_ratio, clamped to [0,1]."""
     alive_ratio = alive_count / max(n_nodes, 1)
     fiedler_ratio = (fiedler_final / fiedler_initial) if fiedler_initial > 0 else 0.0
-    score = alive_ratio * fiedler_ratio
+    score = (alive_ratio + fiedler_ratio) / 2.0
     return float(min(1.0, max(0.0, score)))
 
 

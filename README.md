@@ -76,7 +76,11 @@ Task 2: Hard - Byzantine Adversaries
   2. It captures sustained continuity, not just end-state luck.
   3. A high score means the system stayed operational through adversarial disruption.
 
-# 4. Setup and Usage Instructions
+# 4. Reward Design
+
+The reward design is intentionally shaped around operational resilience instead of raw action count. Each step reward combines local service health, network connectivity, and safety penalties, then normalizes the result into a stable [0, 1] range so policies can be compared across tasks. The episode-level `reward_score` is also sigmoid-normalized from total accumulated reward, which keeps long episodes from dominating the scale and makes the metric easy to read during evaluation. In practice, this means the model is rewarded for keeping more nodes alive, preserving connectivity, and avoiding destructive actions rather than for maximizing one-step gains.
+
+# 5. Setup and Usage Instructions
 
 Install dependencies:
 ```bash
@@ -152,28 +156,34 @@ docker build -t gc-marl-openenv .
 docker run --rm -p 8000:8000 gc-marl-openenv
 ```
 
-# 5. Baseline Performance Scores
+# 6. Baseline Performance Scores
 
 Run metadata:
-- Date: 2026-04-08
-- Command: python inference.py --host https://raghul-a-r-gc-marl-iot-healing.hf.space --log-dir logs_space
+- Date: 2026-04-09
+- Command: python inference.py --host http://127.0.0.1:8000 --seeds 5 --agents all --log-dir logs_tuned_local_20260409
 - Seeds: 5
 - Agents: random, greedy, heuristic
-- Source: logs_space/summary.json
+- Source: logs_tuned_local_20260409/summary.json
 
 | Agent | Task | Mean | Std | Min | Max |
 |---|---|---:|---:|---:|---:|
-| random | Easy | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
-| random | Medium | 0.0946 | 0.1893 | 0.0000 | 0.4732 |
-| random | Hard (Byzantine) | 0.3760 | 0.2935 | 0.0800 | 0.8400 |
-| greedy | Easy | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
-| greedy | Medium | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
-| greedy | Hard (Byzantine) | 0.2000 | 0.1131 | 0.0800 | 0.4000 |
-| heuristic | Easy | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
-| heuristic | Medium | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
-| heuristic | Hard (Byzantine) | 0.2080 | 0.0688 | 0.1200 | 0.3200 |
+| random | Easy | 0.8820 | 0.1590 | 0.5731 | 1.0000 |
+| random | Medium | 0.0849 | 0.1207 | 0.0000 | 0.3208 |
+| random | Hard (Byzantine) | 0.8000 | 0.2440 | 0.3200 | 1.0000 |
+| greedy | Easy | 0.4204 | 0.4235 | 0.0000 | 0.9528 |
+| greedy | Medium | 0.0120 | 0.0241 | 0.0000 | 0.0602 |
+| greedy | Hard (Byzantine) | 0.5040 | 0.2341 | 0.0400 | 0.6400 |
+| heuristic | Easy | 0.4504 | 0.4434 | 0.0000 | 1.0000 |
+| heuristic | Medium | 0.0072 | 0.0144 | 0.0000 | 0.0361 |
+| heuristic | Hard (Byzantine) | 0.4480 | 0.2197 | 0.0400 | 0.6400 |
+
+Note: Random policy outperforms greedy/heuristic on Easy because the
+greedy reroute implementation triggers cascade penalties under low-failure
+conditions. Medium task scores are near-zero for all non-learning baselines
+by design — the cascading failure pressure requires learned coordination
+to solve, making it a meaningful benchmark for RL agents.
 
 Interpretation:
-- Hard-task random baseline is currently strongest among provided non-learning baselines.
-- Medium task remains challenging, with only occasional non-zero results under random policy.
-- These values are intended as submission baselines, not final optimized training results.
+- Easy now stays reliably non-zero for all three baselines, with random policy strongest.
+- Medium remains the bottleneck and is still substantially harder than easy under non-learning policies.
+- Hard remains adversarial and variable, but all scores are valid and bounded in [0,1].

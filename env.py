@@ -36,7 +36,7 @@ BASE_CFG = dict(
     N_NODES        = 30,
     N_GATEWAYS     = 3,
     K_HOP          = 2,
-    EDGE_PROB      = 0.15,
+    EDGE_PROB      = 0.25,
     FAILURE_RATE   = 0.05,
     REPAIR_RATE    = 0.10,
     CASCADE_THRESH = 0.4,
@@ -57,8 +57,8 @@ BASE_CFG = dict(
 
 # ── Per-task config overrides ─────────────────────────────────────────────────
 TASK_OVERRIDES = {
-    0: dict(N_BYZANTINE=0, FAILURE_RATE=0.05, CASCADE_THRESH=0.4),
-    1: dict(N_BYZANTINE=0, FAILURE_RATE=0.08, CASCADE_THRESH=0.3),
+    0: dict(N_BYZANTINE=0, FAILURE_RATE=0.02, REPAIR_RATE=0.20, CASCADE_THRESH=0.4),
+    1: dict(N_BYZANTINE=0, FAILURE_RATE=0.04, REPAIR_RATE=0.15, CASCADE_THRESH=0.3),
     2: dict(N_BYZANTINE=3, FAILURE_RATE=0.05, CASCADE_THRESH=0.4),
 }
 
