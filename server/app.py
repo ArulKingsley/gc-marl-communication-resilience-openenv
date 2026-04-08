@@ -48,8 +48,10 @@ def _require_env() -> IoTNetworkEnv:
 
 
 @app.post("/reset", response_model=ResetResponse)
-def reset(body: ResetRequest) -> ResetResponse:
+def reset(body: ResetRequest | None = None) -> ResetResponse:
     global _env, _last_obs
+
+    body = body or ResetRequest()
 
     if _env is None:
         _env = IoTNetworkEnv(task_id=body.task_id)
