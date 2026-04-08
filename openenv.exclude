@@ -3,6 +3,10 @@
 __pycache__/
 logs/
 logs_latest/
+logs_presub*/
+logs_presub*.txt
+logs_should_fail/
+outputs/
 OneDrive_2_3-30-2026.zip
 *.zip
 *.ipynb
