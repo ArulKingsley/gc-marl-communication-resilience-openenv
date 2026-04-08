@@ -1,0 +1,48 @@
+# Python bytecode and cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Packaging and build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Test and type-check caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Notebook checkpoints
+.ipynb_checkpoints/
+
+# Local runtime/output directories
+.openenv_tmp/
+logs/
+logs_latest/
+logs_space/
+logs_presub*/
+logs_presub*.txt
+logs_should_fail/
+outputs/
+*.log
+
+# Local/editor/OS noise
+.DS_Store
+Thumbs.db
+
+# Local archives
+*.zip
+
+# Notebooks and local env files
+*.ipynb
+.env
+.env.*

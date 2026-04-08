@@ -1,0 +1,68 @@
+name: gc-marl-iot-healing
+version: "1.0.0"
+description: >
+  Real-world communication infrastructure resilience benchmark. Agents
+  represent edge devices in a city-scale IoT network that must maintain
+  service during random outages, cascading overloads, and adversarial
+  Byzantine behavior. Three tasks of increasing difficulty are graded by
+  network continuity, survivor ratio, and sustained connectivity.
+
+author: GC-MARL Research
+license: MIT
+
+tasks:
+  - id: 0
+    name: "Easy — Random Failure Recovery"
+    description: >
+      Pure node-failure recovery with no adversaries.
+      N_BYZANTINE=0, FAILURE_RATE=0.05.
+      Grader: final fiedler_value() normalised by initial λ₂.
+    difficulty: easy
+    max_steps: 25
+    grader: fiedler_normalised
+
+  - id: 1
+    name: "Medium — Cascading Failure Survival"
+    description: >
+      Tighter cascade threshold drives larger chain failures.
+      CASCADE_THRESH=0.3, FAILURE_RATE=0.08.
+      Grader: (alive_count / N_NODES) × (fiedler / fiedler_initial).
+    difficulty: medium
+    max_steps: 25
+    grader: alive_times_fiedler
+
+  - id: 2
+    name: "Hard — Byzantine Adversaries"
+    description: >
+      Three Byzantine nodes inject adversarial actions at reset.
+      N_BYZANTINE=3, full paper setup.
+      Grader: fraction of steps where network stayed connected
+      despite Byzantine agents (mirrors the paper's 82.1% result).
+    difficulty: hard
+    max_steps: 25
+    grader: connected_fraction
+
+environment:
+  observation_space:
+    type: Box
+    shape: [8]
+    dtype: float32
+  action_space:
+    type: Discrete
+    n: 4
+  n_agents: 30
+  max_steps: 25
+  reward_range: [0.0, 1.0]
+  reward_normalisation:
+    step: "sigmoid(raw_step_reward)"
+    episode: "sigmoid(total_reward / N_NODES)"
+
+endpoints:
+  reset: "POST /reset"
+  step:  "POST /step"
+  state: "GET  /state"
+  health: "GET  /health"
+
+docker:
+  image: gc-marl-openenv:latest
+  port: 8000
