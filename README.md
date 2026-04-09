@@ -12,9 +12,22 @@ tags:
   - network-resilience
 ---
 
+A multi-agent reinforcement learning benchmark for communication infrastructure resilience under failures, cascades, and Byzantine attacks.
+
 # 1. Environment Overview and Motivation
 
 This environment simulates a real-world communication infrastructure resilience problem: a city-scale IoT and edge communication network under outage and attack conditions. Each agent is a device or gateway operator that must make local decisions to keep emergency communication service available. The benchmark is designed for network infrastructure repair prioritization and incident response, not for game scoring.
+
+## File Structure
+| File | Role |
+|---|---|
+| `openenv.yaml` | Task definitions and spec metadata |
+| `env.py` | Simulation dynamics - topology, failures, rewards |
+| `models.py` | Pydantic schemas and grader functions |
+| `server/app.py` | FastAPI endpoints /reset /step /state /health |
+| `inference.py` | Baseline runner with structured logs |
+| `smoke_test.py` | Self-verification test against live endpoint |
+| `Dockerfile` | Deployment image |
 
 Why this is a real operator task:
 - Utilities, transport systems, hospitals, and emergency services depend on resilient communication backbones.
@@ -147,7 +160,7 @@ OpenEnv validator command (spec requirement):
 python -m openenv.cli validate .
 ```
 
-Validation output and endpoint checks are listed in Section 6.
+Validation output is listed in the Validation section below.
 
 Hugging Face Space deployment checklist:
 - This README frontmatter already includes tag openenv.
@@ -161,24 +174,11 @@ docker build -t gc-marl-openenv .
 docker run --rm -p 8000:8000 gc-marl-openenv
 ```
 
-# 6. Validation
-
-OpenEnv validation (final pre-submit check):
-```bash
+## Validation
 python -m openenv.cli validate .
-```
-
-Exact output:
-```text
 [OK] : Ready for multi-mode deployment
-```
 
-Live Space endpoint checks:
-- `GET /health` -> 200
-- `POST /reset` -> 200
-- `GET /state` -> 200
-
-# 7. Baseline Performance Scores
+# 6. Baseline Performance Scores
 
 Run metadata:
 - Date: 2026-04-09
