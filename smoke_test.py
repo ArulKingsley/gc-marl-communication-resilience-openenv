@@ -21,7 +21,7 @@ from models import NetworkState, ResetResponse, StepResponse
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", default="http://localhost:8000")
-    parser.add_argument("--task", type=int, default=0, choices=[0, 1, 2])
+    parser.add_argument("--task", type=int, default=0, choices=[0, 1, 2, 3])
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--timeout", type=int, default=10)
     return parser.parse_args()

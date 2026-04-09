@@ -12,27 +12,27 @@ license: MIT
 
 tasks:
   - id: 0
-    name: "Easy — Random Failure Recovery"
+    name: "Easy - Random Failure Recovery"
     description: >
       Pure node-failure recovery with no adversaries.
       N_BYZANTINE=0, FAILURE_RATE=0.05.
-      Grader: final fiedler_value() normalised by initial λ₂.
+      Grader: final fiedler_value() normalised by initial lambda2.
     difficulty: easy
     max_steps: 25
     grader: fiedler_normalised
 
   - id: 1
-    name: "Medium — Cascading Failure Survival"
+    name: "Medium - Cascading Failure Survival"
     description: >
       Tighter cascade threshold drives larger chain failures.
       CASCADE_THRESH=0.3, FAILURE_RATE=0.08.
-      Grader: (alive_count / N_NODES) × (fiedler / fiedler_initial).
+      Grader: (alive_count / N_NODES) x (fiedler / fiedler_initial).
     difficulty: medium
     max_steps: 25
     grader: alive_times_fiedler
 
   - id: 2
-    name: "Hard — Byzantine Adversaries"
+    name: "Hard - Byzantine Adversaries"
     description: >
       Three Byzantine nodes inject adversarial actions at reset.
       N_BYZANTINE=3, full paper setup.
