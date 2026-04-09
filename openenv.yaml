@@ -42,6 +42,17 @@ tasks:
     max_steps: 25
     grader: connected_fraction
 
+  - id: 3
+    name: "Combined Siege"
+    description: >
+      Combined Byzantine and cascading pressure in a single scenario.
+      N_BYZANTINE=3, FAILURE_RATE=0.06, REPAIR_RATE=0.12,
+      CASCADE_THRESH=0.32.
+      Grader: 0.6 * hard + 0.4 * medium.
+    difficulty: expert
+    max_steps: 25
+    grader: combined_weighted
+
 environment:
   observation_space:
     type: Box

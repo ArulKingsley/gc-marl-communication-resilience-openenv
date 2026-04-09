@@ -21,8 +21,8 @@ N_ACTIONS  = 4    # Discrete(4)
 class ResetRequest(BaseModel):
     task_id: int = Field(
         default=0,
-        ge=0, le=2,
-        description="0=Easy, 1=Medium, 2=Hard (Byzantine)",
+        ge=0, le=3,
+        description="0=Easy, 1=Medium, 2=Hard (Byzantine), 3=Combined Siege",
     )
     seed: Optional[int] = Field(
         default=None,
@@ -142,3 +142,17 @@ def grade_hard(connected_steps: int, total_steps: int) -> float:
         return 0.0
     score = connected_steps / total_steps
     return float(min(1.0, max(0.0, score)))
+
+
+def grade_combined(
+    alive_count: int,
+    n_nodes: int,
+    fiedler_final: float,
+    fiedler_initial: float,
+    connected_steps: int,
+    total_steps: int,
+) -> float:
+    """Task 3: weighted blend of medium and hard graders."""
+    medium = grade_medium(alive_count, n_nodes, fiedler_final, fiedler_initial)
+    hard = grade_hard(connected_steps, total_steps)
+    return float(round(0.4 * medium + 0.6 * hard, 6))

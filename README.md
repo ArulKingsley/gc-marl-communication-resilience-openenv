@@ -76,6 +76,14 @@ Task 2: Hard - Byzantine Adversaries
   2. It captures sustained continuity, not just end-state luck.
   3. A high score means the system stayed operational through adversarial disruption.
 
+Task 3: Combined Siege (Expert)
+- Config: N_BYZANTINE=3, FAILURE_RATE=0.06, REPAIR_RATE=0.12, CASCADE_THRESH=0.32
+- Grader: 0.4 * medium_score + 0.6 * hard_score
+- Plain-English explanation:
+  1. This task combines final-state survivability and sustained connectivity under attack.
+  2. The medium component rewards remaining alive nodes and end-episode structural quality.
+  3. The hard component rewards staying connected throughout the episode timeline.
+
 # 4. Reward Design
 
 The reward design is intentionally shaped around operational resilience instead of raw action count. Each step reward combines local service health, network connectivity, and safety penalties, then normalizes the result into a stable [0, 1] range so policies can be compared across tasks. The episode-level `reward_score` is also sigmoid-normalized from total accumulated reward, which keeps long episodes from dominating the scale and makes the metric easy to read during evaluation. In practice, this means the model is rewarded for keeping more nodes alive, preserving connectivity, and avoiding destructive actions rather than for maximizing one-step gains.
@@ -199,3 +207,16 @@ Interpretation:
 - Easy remains high across policies, with random currently strongest on this fixed-seed benchmark.
 - Medium now shows a clear spread and no near-zero collapse after policy and grader fixes.
 - Hard remains adversarial and variable, with all baselines still bounded in [0,1].
+
+Task 3 benchmark (Combined Siege):
+- Date: 2026-04-09
+- Command: python inference.py --host http://127.0.0.1:8000 --task 3 --seeds 5 --agents all --log-dir logs_p3_task3
+- Seeds: 5
+- Agents: random, greedy, heuristic
+- Source: logs_p3_task3/summary.json
+
+| Agent | Task | Mean | Std | Min | Max |
+|---|---|---:|---:|---:|---:|
+| random | Combined Siege | 0.3929 | 0.2218 | 0.1773 | 0.7216 |
+| greedy | Combined Siege | 0.8601 | 0.1037 | 0.6864 | 1.0000 |
+| heuristic | Combined Siege | 0.6892 | 0.1885 | 0.4107 | 0.9040 |

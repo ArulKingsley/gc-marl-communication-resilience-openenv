@@ -24,7 +24,7 @@ from gymnasium import spaces
 
 from models import (
     sigmoid_normalise,
-    grade_easy, grade_medium, grade_hard,
+    grade_easy, grade_medium, grade_hard, grade_combined,
     OBS_DIM, N_ACTIONS,
 )
 
@@ -60,6 +60,7 @@ TASK_OVERRIDES = {
     0: dict(N_BYZANTINE=0, FAILURE_RATE=0.02, REPAIR_RATE=0.20, CASCADE_THRESH=0.4),
     1: dict(N_BYZANTINE=0, FAILURE_RATE=0.04, REPAIR_RATE=0.15, CASCADE_THRESH=0.3),
     2: dict(N_BYZANTINE=3, FAILURE_RATE=0.05, CASCADE_THRESH=0.4),
+    3: dict(N_BYZANTINE=3, FAILURE_RATE=0.06, REPAIR_RATE=0.12, CASCADE_THRESH=0.32),
 }
 
 
@@ -466,6 +467,15 @@ class IoTNetworkEnv(gym.Env):
         elif self.task_id == 1:
             return grade_medium(
                 alive_count, self.n_agents, fiedler_now, self._fiedler_initial
+            )
+        elif self.task_id == 3:
+            return grade_combined(
+                alive_count,
+                self.n_agents,
+                fiedler_now,
+                self._fiedler_initial,
+                self._connected_steps,
+                self._step_count,
             )
         else:
             return grade_hard(self._connected_steps, self._step_count)
