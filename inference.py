@@ -45,6 +45,11 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", default="http://localhost:8000")
     parser.add_argument(
+        "--api-key",
+        default=None,
+        help="LLM API key. Default uses API_KEY env var.",
+    )
+    parser.add_argument(
         "--api-base-url",
         default=None,
         help="LLM API base URL. Default uses API_BASE_URL env var.",
@@ -80,7 +85,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--hf-token",
         default=None,
-        help="Optional override for HF token. Default uses HF_TOKEN env var.",
+        help="Legacy alias for API key/token. Prefer --api-key and API_KEY.",
     )
     return parser.parse_args()
 
@@ -101,7 +106,13 @@ def resolve_agents(agents_arg: str) -> list[str]:
 def resolve_required_config(args: argparse.Namespace) -> tuple[str, str, str]:
     api_base_url = (args.api_base_url or os.environ.get("API_BASE_URL") or "").strip()
     model_name = (args.model_name or os.environ.get("MODEL_NAME") or "").strip()
-    hf_token = (args.hf_token or os.environ.get("HF_TOKEN") or "").strip()
+    api_key = (
+        args.api_key
+        or os.environ.get("API_KEY")
+        or args.hf_token
+        or os.environ.get("HF_TOKEN")
+        or ""
+    ).strip()
 
     if not model_name:
         model_name = "gpt-4o-mini"
@@ -109,23 +120,24 @@ def resolve_required_config(args: argparse.Namespace) -> tuple[str, str, str]:
     missing: list[str] = []
     if not api_base_url:
         missing.append("API_BASE_URL")
-    if not hf_token:
-        missing.append("HF_TOKEN")
+    if not api_key:
+        missing.append("API_KEY")
 
     if missing:
         raise RuntimeError(
             "Missing required environment configuration: "
             + ", ".join(missing)
-            + ". Define API_BASE_URL and HF_TOKEN before running inference. "
+            + ". Define API_BASE_URL and API_KEY before running inference. "
+            + "(HF_TOKEN is accepted as a legacy alias.) "
             + "MODEL_NAME is optional and defaults to gpt-4o-mini."
         )
 
-    return api_base_url, model_name, hf_token
+    return api_base_url, model_name, api_key
 
 
-def build_openai_client(api_base_url: str, hf_token: str) -> OpenAI:
+def build_openai_client(api_base_url: str, api_key: str) -> OpenAI:
     try:
-        return OpenAI(base_url=api_base_url, api_key=hf_token)
+        return OpenAI(base_url=api_base_url, api_key=api_key)
     except Exception as e:
         emit_structured(
             "END",
@@ -136,6 +148,43 @@ def build_openai_client(api_base_url: str, hf_token: str) -> OpenAI:
             },
         )
         raise RuntimeError(f"OpenAI client initialization failed: {e}") from e
+
+
+def verify_llm_proxy_call(client: OpenAI, model_name: str) -> None:
+    try:
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {
+                    "role": "user",
+                    "content": "Reply with a single token: OK",
+                }
+            ],
+            max_tokens=1,
+            temperature=0,
+            timeout=20,
+        )
+        emit_structured(
+            "STEP",
+            {
+                "phase": "llm_proxy_check",
+                "status": "success",
+                "model_name": model_name,
+                "response_id": getattr(response, "id", None),
+            },
+        )
+    except Exception as e:
+        emit_structured(
+            "END",
+            {
+                "phase": "llm_proxy_check",
+                "status": "error",
+                "error": str(e),
+            },
+        )
+        raise RuntimeError(
+            "Failed LLM proxy preflight call. Ensure API_BASE_URL/API_KEY are the injected LiteLLM proxy values."
+        ) from e
 
 
 def emit_structured(tag: str, fields: dict) -> None:
@@ -483,6 +532,9 @@ def main() -> None:
         _openai_client = build_openai_client(api_base_url, token)
         if _openai_client is None:
             raise RuntimeError("Failed to initialise OpenAI client.")
+
+        # Force at least one request through the configured LLM proxy.
+        verify_llm_proxy_call(_openai_client, model_name)
 
         emit_structured(
             "START",
