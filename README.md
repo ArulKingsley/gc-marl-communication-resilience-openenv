@@ -128,15 +128,15 @@ python inference.py --host http://127.0.0.1:8000 --log-dir logs_latest
 Mandatory environment configuration:
 - `API_BASE_URL`: API endpoint for OpenAI-compatible LLM inference.
 - `MODEL_NAME`: Model identifier used for LLM inference calls.
-- `HF_TOKEN`: Hugging Face/API key used for authenticated requests.
+- One credential variable: `API_KEY` (preferred), `OPENAI_API_KEY`, or `HF_TOKEN`.
 
-The `inference.py` script now validates these variables at startup and exits with code `2` if any are missing.
+The `inference.py` script validates these variables at startup and exits with code `2` if required values are missing.
 
 PowerShell example:
 ```bash
 $env:API_BASE_URL="https://api.openai.com/v1"
 $env:MODEL_NAME="gpt-4o-mini"
-$env:HF_TOKEN="hf_xxx"
+$env:OPENAI_API_KEY="sk-xxx"
 python inference.py --host https://<space-url> --log-dir logs_latest
 ```
 

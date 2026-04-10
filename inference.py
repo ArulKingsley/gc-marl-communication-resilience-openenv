@@ -47,7 +47,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--api-key",
         default=None,
-        help="LLM API key. Default uses API_KEY env var.",
+        help="LLM API key. Default uses API_KEY or OPENAI_API_KEY env vars.",
     )
     parser.add_argument(
         "--api-base-url",
@@ -109,6 +109,7 @@ def resolve_required_config(args: argparse.Namespace) -> tuple[str, str, str]:
     api_key = (
         args.api_key
         or os.environ.get("API_KEY")
+        or os.environ.get("OPENAI_API_KEY")
         or args.hf_token
         or os.environ.get("HF_TOKEN")
         or ""
@@ -127,8 +128,7 @@ def resolve_required_config(args: argparse.Namespace) -> tuple[str, str, str]:
         raise RuntimeError(
             "Missing required environment configuration: "
             + ", ".join(missing)
-            + ". Define API_BASE_URL and API_KEY before running inference. "
-            + "(HF_TOKEN is accepted as a legacy alias.) "
+            + ". Define API_BASE_URL and one of API_KEY / OPENAI_API_KEY / HF_TOKEN before running inference. "
             + "MODEL_NAME is optional and defaults to gpt-4o-mini."
         )
 
