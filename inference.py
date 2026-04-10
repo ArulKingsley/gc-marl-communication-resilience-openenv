@@ -52,7 +52,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--model-name",
         default=None,
-        help="LLM model identifier. Default uses MODEL_NAME env var.",
+        help="LLM model identifier. Default uses MODEL_NAME env var, then gpt-4o-mini.",
     )
     parser.add_argument(
         "--task",
@@ -103,11 +103,12 @@ def resolve_required_config(args: argparse.Namespace) -> tuple[str, str, str]:
     model_name = (args.model_name or os.environ.get("MODEL_NAME") or "").strip()
     hf_token = (args.hf_token or os.environ.get("HF_TOKEN") or "").strip()
 
+    if not model_name:
+        model_name = "gpt-4o-mini"
+
     missing: list[str] = []
     if not api_base_url:
         missing.append("API_BASE_URL")
-    if not model_name:
-        missing.append("MODEL_NAME")
     if not hf_token:
         missing.append("HF_TOKEN")
 
@@ -115,7 +116,8 @@ def resolve_required_config(args: argparse.Namespace) -> tuple[str, str, str]:
         raise RuntimeError(
             "Missing required environment configuration: "
             + ", ".join(missing)
-            + ". Define API_BASE_URL, MODEL_NAME, and HF_TOKEN before running inference."
+            + ". Define API_BASE_URL and HF_TOKEN before running inference. "
+            + "MODEL_NAME is optional and defaults to gpt-4o-mini."
         )
 
     return api_base_url, model_name, hf_token
