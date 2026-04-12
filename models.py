@@ -21,6 +21,10 @@ N_ACTIONS  = 4    # Discrete(4)
 EPSILON = 1e-6
 
 
+def _clamp(score: float) -> float:
+    return float(min(1.0 - EPSILON, max(EPSILON, float(score))))
+
+
 # ── Reset ─────────────────────────────────────────────────────────────────────
 class ResetRequest(BaseModel):
     task_id: int = Field(
@@ -114,19 +118,18 @@ def sigmoid_normalise(total_reward: float, n_nodes: int = N_AGENTS) -> float:
     if x >= 0:
         z = math.exp(-x)
         score = 1.0 / (1.0 + z)
-        return float(min(1.0 - EPSILON, max(EPSILON, score)))
+        return _clamp(score)
     z = math.exp(x)
     score = z / (1.0 + z)
-    return float(min(1.0 - EPSILON, max(EPSILON, score)))
+    return _clamp(score)
 
 
 # ── Per-task grader functions ─────────────────────────────────────────────────
 def grade_easy(fiedler_final: float, fiedler_initial: float) -> float:
     """Task 0: final λ₂ normalised by initial λ₂, clipped to (0,1)."""
     if fiedler_initial <= 0:
-        return EPSILON
-    score = fiedler_final / fiedler_initial
-    return float(min(1.0 - EPSILON, max(EPSILON, score)))
+        return _clamp(0.0)
+    return _clamp(fiedler_final / fiedler_initial)
 
 
 def grade_medium(
@@ -138,16 +141,14 @@ def grade_medium(
     """Task 1: average of alive_ratio and fiedler_ratio, clipped to (0,1)."""
     alive_ratio = alive_count / max(n_nodes, 1)
     fiedler_ratio = (fiedler_final / fiedler_initial) if fiedler_initial > 0 else 0.0
-    score = (alive_ratio + fiedler_ratio) / 2.0
-    return float(min(1.0 - EPSILON, max(EPSILON, score)))
+    return _clamp((alive_ratio + fiedler_ratio) / 2.0)
 
 
 def grade_hard(connected_steps: int, total_steps: int) -> float:
     """Task 2: fraction of steps where alive subgraph stayed connected, clipped to (0,1)."""
     if total_steps == 0:
-        return EPSILON
-    score = connected_steps / total_steps
-    return float(min(1.0 - EPSILON, max(EPSILON, score)))
+        return _clamp(0.0)
+    return _clamp(connected_steps / total_steps)
 
 
 def grade_combined(
@@ -161,5 +162,4 @@ def grade_combined(
     """Task 3: weighted blend of medium and hard graders."""
     medium = grade_medium(alive_count, n_nodes, fiedler_final, fiedler_initial)
     hard = grade_hard(connected_steps, total_steps)
-    score = 0.4 * medium + 0.6 * hard
-    return float(min(1.0 - EPSILON, max(EPSILON, score)))
+    return _clamp(0.4 * medium + 0.6 * hard)

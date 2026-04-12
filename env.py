@@ -25,7 +25,7 @@ from gymnasium import spaces
 from models import (
     sigmoid_normalise,
     grade_easy, grade_medium, grade_hard, grade_combined,
-    OBS_DIM, N_ACTIONS,
+    OBS_DIM, N_ACTIONS, EPSILON,
 )
 
 # ── Reproducibility ───────────────────────────────────────────────────────────
@@ -459,7 +459,8 @@ class IoTNetworkEnv(gym.Env):
 
     def _normalise_step_rewards(self, rewards: np.ndarray) -> np.ndarray:
         """Squash per-step rewards to (0,1) via sigmoid."""
-        return 1.0 / (1.0 + np.exp(-rewards))
+        scores = 1.0 / (1.0 + np.exp(-rewards))
+        return np.clip(scores, EPSILON, 1.0 - EPSILON)
 
     def _compute_episode_score(self, fiedler_now: float, alive_count: int) -> float:
         if self.task_id == 0:
