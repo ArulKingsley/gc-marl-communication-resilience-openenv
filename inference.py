@@ -414,8 +414,8 @@ def run_episode(
         alive_series: list[int] = []
         connected_steps = 0
         total_steps = 0
-        episode_score = 0.0
-        reward_score = 0.0
+        episode_score = SCORE_EPSILON
+        reward_score = SCORE_EPSILON
         
         max_steps = 1000  # Safety limit to prevent infinite loops
 
@@ -453,8 +453,10 @@ def run_episode(
             )
 
             if truncated:
-                episode_score = float(info.get("episode_score") or 0.0)
-                reward_score = float(info.get("reward_score") or 0.0)
+                raw_episode_score = float(info.get("episode_score") or SCORE_EPSILON)
+                raw_reward_score = float(info.get("reward_score") or SCORE_EPSILON)
+                episode_score = clip_open_unit_interval(raw_episode_score)
+                reward_score = clip_open_unit_interval(raw_reward_score)
                 emit_structured(
                     "END",
                     {
