@@ -117,9 +117,9 @@ def sigmoid_normalise(total_reward: float, n_nodes: int = N_AGENTS) -> float:
     # Numerically stable sigmoid for large-magnitude rewards.
     if x >= 0:
         z = math.exp(-x)
-        return 1.0 / (1.0 + z)
+        return _clip_open_unit_interval(1.0 / (1.0 + z))
     z = math.exp(x)
-    return z / (1.0 + z)
+    return _clip_open_unit_interval(z / (1.0 + z))
 
 
 # ── Per-task grader functions ─────────────────────────────────────────────────
