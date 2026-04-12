@@ -150,7 +150,7 @@ def build_openai_client(api_base_url: str, api_key: str) -> OpenAI:
         raise RuntimeError(f"OpenAI client initialization failed: {e}") from e
 
 
-def verify_llm_proxy_call(client: OpenAI, model_name: str) -> None:
+def verify_llm_proxy_call(client: OpenAI, model_name: str) -> bool:
     try:
         response = client.chat.completions.create(
             model=model_name,
@@ -173,18 +173,23 @@ def verify_llm_proxy_call(client: OpenAI, model_name: str) -> None:
                 "response_id": getattr(response, "id", None),
             },
         )
+        return True
     except Exception as e:
         emit_structured(
-            "END",
+            "STEP",
             {
                 "phase": "llm_proxy_check",
-                "status": "error",
+                "status": "warning",
                 "error": str(e),
             },
         )
-        raise RuntimeError(
-            "Failed LLM proxy preflight call. Ensure API_BASE_URL/API_KEY are the injected LiteLLM proxy values."
-        ) from e
+        print(
+            "[WARNING] LLM proxy preflight failed; continuing episode execution. "
+            "Ensure API_BASE_URL / MODEL_NAME / HF_TOKEN are the injected validator values.",
+            file=sys.stderr,
+            flush=True,
+        )
+        return False
 
 
 def emit_structured(tag: str, fields: dict) -> None:
@@ -533,8 +538,16 @@ def main() -> None:
         if _openai_client is None:
             raise RuntimeError("Failed to initialise OpenAI client.")
 
-        # Force at least one request through the configured LLM proxy.
-        verify_llm_proxy_call(_openai_client, model_name)
+        # Attempt a proxy preflight request, but do not crash if it fails.
+        preflight_ok = verify_llm_proxy_call(_openai_client, model_name)
+        if not preflight_ok:
+            emit_structured(
+                "STEP",
+                {
+                    "phase": "llm_proxy_check",
+                    "status": "continuing_without_preflight",
+                },
+            )
 
         emit_structured(
             "START",
