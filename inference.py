@@ -39,6 +39,11 @@ TASK_NAMES = {
 }
 ALL_TASKS = [0, 1, 2, 3]
 ALL_AGENTS = ["random", "greedy", "heuristic"]
+SCORE_EPSILON = 1e-6
+
+
+def clip_open_unit_interval(value: float) -> float:
+    return float(min(1.0 - SCORE_EPSILON, max(SCORE_EPSILON, value)))
 
 
 def parse_args() -> argparse.Namespace:
@@ -500,13 +505,18 @@ def run_episode(
 
 def summarise_scores(scores: list[float]) -> dict:
     if not scores:
-        return {"mean": 0.0, "std": 0.0, "min": 0.0, "max": 0.0}
-    array = np.asarray(scores, dtype=np.float64)
+        return {
+            "mean": SCORE_EPSILON,
+            "std": 0.0,
+            "min": SCORE_EPSILON,
+            "max": SCORE_EPSILON,
+        }
+    array = np.asarray([clip_open_unit_interval(score) for score in scores], dtype=np.float64)
     return {
-        "mean": float(np.mean(array)),
+        "mean": clip_open_unit_interval(float(np.mean(array))),
         "std": float(np.std(array)),
-        "min": float(np.min(array)),
-        "max": float(np.max(array)),
+        "min": clip_open_unit_interval(float(np.min(array))),
+        "max": clip_open_unit_interval(float(np.max(array))),
     }
 
 
@@ -589,6 +599,9 @@ def main() -> None:
                             agent_name,
                             token=token,
                             model_name=model_name,
+                        )
+                        result["episode_score"] = clip_open_unit_interval(
+                            float(result["episode_score"])
                         )
                         task_scores.append(result["episode_score"])
 
