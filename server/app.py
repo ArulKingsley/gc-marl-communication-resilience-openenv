@@ -15,12 +15,14 @@ from fastapi import FastAPI, HTTPException
 
 from env import IoTNetworkEnv
 from models import (
+    EPSILON,
     NetworkState,
     NodeState,
     ResetRequest,
     ResetResponse,
     StepRequest,
     StepResponse,
+    _clamp,
 )
 
 app = FastAPI(
@@ -36,6 +38,25 @@ app = FastAPI(
 # Single shared environment instance for sequential evaluation workflows.
 _env: IoTNetworkEnv | None = None
 _last_obs: list[list[float]] | None = None
+
+
+def _sanitise_info_payload(info: dict) -> dict:
+    payload = dict(info)
+
+    fiedler = payload.get("fiedler")
+    if fiedler is None:
+        payload["fiedler"] = EPSILON
+    else:
+        fv = float(fiedler)
+        payload["fiedler"] = _clamp(fv) if fv > 0.0 else EPSILON
+
+    episode_score = payload.get("episode_score")
+    payload["episode_score"] = _clamp(float(episode_score)) if episode_score is not None else EPSILON
+
+    reward_score = payload.get("reward_score")
+    payload["reward_score"] = _clamp(float(reward_score)) if reward_score is not None else EPSILON
+
+    return payload
 
 
 def _require_env() -> IoTNetworkEnv:
@@ -58,11 +79,12 @@ def reset(body: ResetRequest | None = None) -> ResetResponse:
 
     obs, info = _env.reset(task_id=body.task_id, seed=body.seed)
     _last_obs = obs.tolist()
+    safe_info = _sanitise_info_payload(info)
 
     return ResetResponse(
         observations=_last_obs,
         task_id=body.task_id,
-        info=info,
+        info=safe_info,
     )
 
 
@@ -76,13 +98,14 @@ def step(body: StepRequest) -> StepResponse:
 
     global _last_obs
     _last_obs = obs.tolist()
+    safe_info = _sanitise_info_payload(info)
 
     return StepResponse(
         observations=_last_obs,
         rewards=[round(float(r), 6) for r in rewards],
         terminated=[bool(t) for t in terminated],
         truncated=bool(truncated),
-        info=info,
+        info=safe_info,
     )
 
 

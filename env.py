@@ -452,6 +452,9 @@ class IoTNetworkEnv(gym.Env):
                 avg_lq,                          # avg_link_quality
             ] + type_onehot
 
+            # Keep all observation values strictly inside the open interval.
+            obs[agent_id] = np.clip(obs[agent_id], EPSILON, 1.0 - EPSILON)
+
         return obs
 
     def _alive_count(self) -> int:
